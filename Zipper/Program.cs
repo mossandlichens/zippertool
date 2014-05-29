@@ -10,9 +10,8 @@ namespace Zipper
 {
     class Program
     {
-        // const string currentAssemblyDirectoryName = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        const string currentAssemblyDirectoryName = "C:\\ProgramData\\Rodenstock\\Rodenstock Consulting\\";
-
+        static string currentAssemblyDirectoryName = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        
         static void Main(string[] args)
         {
             var commandLineOptions = new CommandLineOptions();
@@ -77,7 +76,11 @@ namespace Zipper
             {
                 if (Settings.Default.Latest == true)
                 {
-                    filesToBeZipped.Add(GetLatestFile(itemToBeZipped, pathPrefix));
+                    string latestFile = GetLatestFile(itemToBeZipped, pathPrefix);
+                    if (latestFile != string.Empty)
+                    {
+                        filesToBeZipped.Add(latestFile);
+                    }
                 }
                 else
                 {
@@ -103,11 +106,14 @@ namespace Zipper
         private static string GetLatestFile(string pattern, string pathPrefix)
         {
             string latestFile = string.Empty;
-            DirectoryInfo di = new DirectoryInfo(pathPrefix);
-            var latestFileInDirectory = di.GetFiles(pattern)
-                                          .OrderByDescending(x => x.LastWriteTime)
-                                          .Take(1);
-            latestFile = latestFileInDirectory.First().FullName;
+            if (Directory.Exists(pathPrefix))
+            {
+                DirectoryInfo di = new DirectoryInfo(pathPrefix);
+                var latestFileInDirectory = di.GetFiles(pattern)
+                                              .OrderByDescending(x => x.LastWriteTime)
+                                              .Take(1);
+                latestFile = latestFileInDirectory.First().FullName;
+            }
             return latestFile;
         }
     }
