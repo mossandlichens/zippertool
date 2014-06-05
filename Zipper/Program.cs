@@ -4,12 +4,15 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 
+[assembly: CLSCompliant(true)]
+[assembly: log4net.Config.XmlConfigurator(Watch = true)]
 namespace Zipper
 {
     class Program
     {
+        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
         static string currentAssemblyDirectoryName = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         
         static void Main(string[] args)
@@ -38,9 +41,7 @@ namespace Zipper
 
             foreach (string itemToBeZipped in itemsToBeZipped)
             {
-                Console.WriteLine("itemToBeZipped = " + itemToBeZipped);
-
-                if (itemToBeZipped.StartsWith(".\\"))
+                if (itemToBeZipped.StartsWith(".\\", StringComparison.OrdinalIgnoreCase))
                 {
                     HandlePattern(ref filesToBeZipped, itemToBeZipped, currentAssemblyDirectoryName);
                 }
@@ -53,21 +54,22 @@ namespace Zipper
                 
             }
 
-            ZipFile outputZipFile = new ZipFile(currentAssemblyDirectoryName + "\\" + Settings.Default.Output);
-
-            foreach (string fileToBeZipped in filesToBeZipped)
+            using (ZipFile outputZipFile = new ZipFile(currentAssemblyDirectoryName + "\\" + Settings.Default.Output))
             {
-                if (File.Exists(fileToBeZipped))
+                foreach (string fileToBeZipped in filesToBeZipped)
                 {
-                    outputZipFile.AddFile(fileToBeZipped);
+                    if (File.Exists(fileToBeZipped))
+                    {
+                        outputZipFile.AddFile(fileToBeZipped);
+                    }
+                    else
+                    {
+                        log.Info("FILE NOT FOUND = " + filesToBeZipped);
+                    }
                 }
-                else
-                {
-                    Console.WriteLine("FILE NOT FOUND: " + fileToBeZipped);
-                }
-            }
 
-            outputZipFile.Save();
+                outputZipFile.Save();
+            }
         }
 
         private static void HandlePattern(ref List<string> filesToBeZipped, string itemToBeZipped, string pathPrefix)
@@ -77,7 +79,7 @@ namespace Zipper
                 if (Settings.Default.Latest == true)
                 {
                     string latestFile = GetLatestFile(itemToBeZipped, pathPrefix);
-                    if (latestFile != string.Empty)
+                    if (string.IsNullOrEmpty(latestFile) == false)
                     {
                         filesToBeZipped.Add(latestFile);
                     }
