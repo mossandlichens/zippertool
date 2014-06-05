@@ -41,17 +41,24 @@ namespace Zipper
 
             foreach (string itemToBeZipped in itemsToBeZipped)
             {
-                if (itemToBeZipped.StartsWith(".\\", StringComparison.OrdinalIgnoreCase))
+                log.Info("Item to be zipped = " + itemToBeZipped);
+                try
                 {
-                    HandlePattern(ref filesToBeZipped, itemToBeZipped, currentAssemblyDirectoryName);
+                    if (itemToBeZipped.StartsWith(".\\", StringComparison.OrdinalIgnoreCase))
+                    {
+                        HandlePattern(ref filesToBeZipped, itemToBeZipped, currentAssemblyDirectoryName);
+                    }
+                    else
+                    {
+                        string expandedFolder = Path.GetDirectoryName(itemToBeZipped);
+                        string trimmedItemToBeZipped = Path.GetFileName(itemToBeZipped);
+                        HandlePattern(ref filesToBeZipped, trimmedItemToBeZipped, expandedFolder);
+                    }
                 }
-                else
+                catch(Exception exception)
                 {
-                    string expandedFolder = Path.GetDirectoryName(itemToBeZipped);
-                    string trimmedItemToBeZipped = Path.GetFileName(itemToBeZipped);
-                    HandlePattern(ref filesToBeZipped, trimmedItemToBeZipped, expandedFolder);
-                }
-                
+                    log.Error("Pattern handling exception = " + exception.Message);
+                }                
             }
 
             using (ZipFile outputZipFile = new ZipFile(currentAssemblyDirectoryName + "\\" + Settings.Default.Output))
@@ -60,11 +67,18 @@ namespace Zipper
                 {
                     if (File.Exists(fileToBeZipped))
                     {
-                        outputZipFile.AddFile(fileToBeZipped);
+                        try
+                        {
+                            outputZipFile.AddFile(fileToBeZipped);
+                        }
+                        catch(Exception exception)
+                        {
+                            log.Error("Zipping exception = " + exception.Message);
+                        }
                     }
                     else
                     {
-                        log.Info("FILE NOT FOUND = " + filesToBeZipped);
+                        log.Warn("FILE NOT FOUND = " + fileToBeZipped);
                     }
                 }
 
