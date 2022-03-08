@@ -1,67 +1,55 @@
-﻿using Ionic.Zip;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-
-[assembly: CLSCompliant(true)]
-[assembly: log4net.Config.XmlConfigurator(Watch = true)]
-namespace Zipper
+﻿namespace Zipper
 {
+    using CommandLine;
+    using NLog;
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.IO.Compression;
+    using System.Linq;
+    using System.Reflection;
+
     class Program
     {
-        private static readonly log4net.ILog log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+        
         static string currentAssemblyDirectoryName = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         
         static void Main(string[] args)
         {
-            var commandLineOptions = new CommandLineOptions();
-            if (CommandLine.Parser.Default.ParseArguments(args, commandLineOptions))
-            {
-                string input = commandLineOptions.Input;
-                if (string.IsNullOrEmpty(input) == false)
-                {
-                    Settings.Default.Input = input;
-                }
+            Parser.Default.ParseArguments<CommandLineOptions>(args)
+                .WithParsed(RunOptions);            
+        }
 
-                Settings.Default.Latest = commandLineOptions.Latest;
-
-                string output = commandLineOptions.Output;
-                if (string.IsNullOrEmpty(output) == false)
-                {
-                    Settings.Default.Output = output;
-                }
-            }
-
-            string[] itemsToBeZipped = Settings.Default.Input.Split(',');
+        private static void RunOptions(CommandLineOptions commandLineOptions)
+        {
+            string[] itemsToBeZipped = commandLineOptions.Input.Split(',');
 
             List<string> filesToBeZipped = new List<string>();
 
             foreach (string itemToBeZipped in itemsToBeZipped)
             {
-                log.Info("Item to be zipped = " + itemToBeZipped);
+                logger.Info("Item to be zipped = " + itemToBeZipped);
                 try
                 {
                     if (itemToBeZipped.StartsWith(".\\", StringComparison.OrdinalIgnoreCase))
                     {
-                        HandlePattern(ref filesToBeZipped, itemToBeZipped, currentAssemblyDirectoryName);
+                        HandlePattern(ref filesToBeZipped, itemToBeZipped, currentAssemblyDirectoryName, commandLineOptions.Latest);
                     }
                     else
                     {
                         string expandedFolder = Path.GetDirectoryName(itemToBeZipped);
                         string trimmedItemToBeZipped = Path.GetFileName(itemToBeZipped);
-                        HandlePattern(ref filesToBeZipped, trimmedItemToBeZipped, expandedFolder);
+                        HandlePattern(ref filesToBeZipped, trimmedItemToBeZipped, expandedFolder, commandLineOptions.Latest);
                     }
                 }
-                catch(Exception exception)
+                catch (Exception exception)
                 {
-                    log.Error("Pattern handling exception = " + exception.Message);
-                }                
+                    logger.Error("Pattern handling exception = " + exception.Message);
+                }
             }
 
-            using (ZipFile outputZipFile = new ZipFile(currentAssemblyDirectoryName + "\\" + Settings.Default.Output))
+            using (ZipArchive outputZipFile = ZipFile.Open(commandLineOptions.Output, ZipArchiveMode.Create))
             {
                 foreach (string fileToBeZipped in filesToBeZipped)
                 {
@@ -69,28 +57,26 @@ namespace Zipper
                     {
                         try
                         {
-                            outputZipFile.AddFile(fileToBeZipped);
+                            outputZipFile.CreateEntryFromFile(fileToBeZipped, Path.GetFileName(fileToBeZipped));
                         }
-                        catch(Exception exception)
+                        catch (Exception exception)
                         {
-                            log.Error("Zipping exception = " + exception.Message);
+                            logger.Error("Zipping exception = " + exception.Message);
                         }
                     }
                     else
                     {
-                        log.Warn("FILE NOT FOUND = " + fileToBeZipped);
+                        logger.Warn("FILE NOT FOUND = " + fileToBeZipped);
                     }
                 }
-
-                outputZipFile.Save();
             }
         }
 
-        private static void HandlePattern(ref List<string> filesToBeZipped, string itemToBeZipped, string pathPrefix)
+        private static void HandlePattern(ref List<string> filesToBeZipped, string itemToBeZipped, string pathPrefix, bool latest)
         {
             if (itemToBeZipped.Contains("*"))
             {
-                if (Settings.Default.Latest == true)
+                if (latest == true)
                 {
                     string latestFile = GetLatestFile(itemToBeZipped, pathPrefix);
                     if (string.IsNullOrEmpty(latestFile) == false)
