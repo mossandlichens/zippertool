@@ -1,7 +1,7 @@
 Zipper
 Zipper Tool
 
-Zipper Tool 1.0.0 Moss and Lichens
+Zipper Tool Moss and Lichens
 
 -i, --input File(s) to be zipped(comma separated)
 
