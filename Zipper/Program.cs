@@ -23,13 +23,15 @@
 
         private static void RunOptions(CommandLineOptions commandLineOptions)
         {
+            logger.Debug("Files to be zipped:" + commandLineOptions.Input);
+
             string[] itemsToBeZipped = commandLineOptions.Input.Split(',');
 
             List<string> filesToBeZipped = new List<string>();
 
             foreach (string itemToBeZipped in itemsToBeZipped)
             {
-                logger.Info("Item to be zipped = " + itemToBeZipped);
+                logger.Info("File to be zipped = " + itemToBeZipped);
                 try
                 {
                     if (itemToBeZipped.StartsWith(".\\", StringComparison.OrdinalIgnoreCase))
@@ -48,6 +50,8 @@
                     logger.Error("Pattern handling exception = " + exception.Message);
                 }
             }
+
+            logger.Debug("Target zip file:" + commandLineOptions.Output);
 
             using (ZipArchive outputZipFile = ZipFile.Open(commandLineOptions.Output, ZipArchiveMode.Create))
             {
